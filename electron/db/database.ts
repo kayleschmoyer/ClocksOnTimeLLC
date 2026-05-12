@@ -42,6 +42,7 @@ function initSchema(db: Database.Database): void {
       clockType       TEXT NOT NULL DEFAULT '',
       customClockType TEXT,
       issue           TEXT NOT NULL DEFAULT '',
+      notes           TEXT NOT NULL DEFAULT '[]',
       status          TEXT NOT NULL DEFAULT 'Active' CHECK(status IN ('Active','Complete')),
       isDeleted       INTEGER NOT NULL DEFAULT 0 CHECK(isDeleted IN (0,1)),
       createdAt       TEXT NOT NULL,
@@ -58,6 +59,12 @@ function initSchema(db: Database.Database): void {
     VALUES (1, NULL, 7);
   `)
 
+  // Migrate: add notes column if missing (for existing databases)
+  const cols = (db.prepare("PRAGMA table_info(records)").all() as { name: string }[]).map(c => c.name)
+  if (!cols.includes('notes')) {
+    db.exec(`ALTER TABLE records ADD COLUMN notes TEXT NOT NULL DEFAULT '[]'`)
+  }
+
   // Seed on first run
   const count = (db.prepare('SELECT COUNT(*) AS n FROM records').get() as { n: number }).n
   if (count === 0) {
@@ -69,29 +76,36 @@ function seedDatabase(db: Database.Database): void {
   const insert = db.prepare(`
     INSERT INTO records
       (number, lastName, firstName, dateEntered, phoneNumber, dateCalled,
-       clockType, customClockType, issue, status, isDeleted, createdAt, updatedAt)
+       clockType, customClockType, issue, notes, status, isDeleted, createdAt, updatedAt)
     VALUES
       (@number, @lastName, @firstName, @dateEntered, @phoneNumber, @dateCalled,
-       @clockType, @customClockType, @issue, @status, 0, @now, @now)
+       @clockType, @customClockType, @issue, @notes, @status, 0, @now, @now)
   `)
 
   const now = new Date().toISOString()
 
-  // Dates relative to 2026-05-12 (app build date) to test all aging bands:
-  // Fresh (0-44 days): after 2026-03-29
-  // Warning (45-75 days): 2026-02-26 to 2026-03-28
-  // Critical (76+ days): before 2026-02-26
   const seeds = [
-    { number: 1, lastName: 'Anderson', firstName: 'Margaret', dateEntered: '2025-11-10', phoneNumber: '(555) 234-5678', dateCalled: '2025-12-15', clockType: 'Grandfather Clock', customClockType: null, issue: 'Pendulum not swinging consistently. Movement needs cleaning and oiling.', status: 'Complete' },
-    { number: 2, lastName: 'Bernhardt', firstName: 'Paul', dateEntered: '2025-12-03', phoneNumber: '(555) 345-6789', dateCalled: null, clockType: 'Wall Clock', customClockType: null, issue: 'Clock runs fast by about 10 minutes per day.', status: 'Active' },
-    { number: 3, lastName: 'Chen', firstName: 'Li', dateEntered: '2026-01-14', phoneNumber: '(555) 456-7890', dateCalled: '2026-02-01', clockType: 'Mantel Clock', customClockType: null, issue: 'Chime mechanism broken. Clock chimes on the wrong hour.', status: 'Complete' },
-    { number: 4, lastName: 'Dorsey', firstName: 'Ruth', dateEntered: '2026-01-28', phoneNumber: '(555) 567-8901', dateCalled: null, clockType: 'Cuckoo Clock', customClockType: null, issue: 'Cuckoo bird door will not open. Weights need adjustment.', status: 'Active' },
-    { number: 5, lastName: 'Ellison', firstName: 'Frank', dateEntered: '2026-02-12', phoneNumber: '(555) 678-9012', dateCalled: null, clockType: 'Wall Clock', customClockType: null, issue: 'Clock stopped running. Mainspring may be broken.', status: 'Active' },
-    { number: 6, lastName: 'Fischer', firstName: 'Greta', dateEntered: '2026-02-20', phoneNumber: '(555) 789-0123', dateCalled: null, clockType: 'Other', customClockType: 'Ship Clock', issue: 'Bell strike mechanism jammed. Second hand also loose.', status: 'Active' },
-    { number: 7, lastName: 'Garza', firstName: 'Manuel', dateEntered: '2026-03-05', phoneNumber: '(555) 890-1234', dateCalled: '2026-03-20', clockType: 'Grandfather Clock', customClockType: null, issue: 'Moon phase dial not advancing correctly. Needs calibration.', status: 'Active' },
-    { number: 8, lastName: 'Huang', firstName: 'Wei', dateEntered: '2026-03-18', phoneNumber: '(555) 901-2345', dateCalled: null, clockType: 'Mantel Clock', customClockType: null, issue: 'Glass door cracked. Pendulum bob missing.', status: 'Active' },
-    { number: 9, lastName: 'Ingram', firstName: 'Sylvia', dateEntered: '2026-04-10', phoneNumber: '(555) 012-3456', dateCalled: null, clockType: 'Cuckoo Clock', customClockType: null, issue: 'Clock runs slow. Cuckoo call sounds weak.', status: 'Active' },
-    { number: 10, lastName: 'Jensen', firstName: 'Karl', dateEntered: '2026-04-28', phoneNumber: '(555) 123-4567', dateCalled: null, clockType: 'Wall Clock', customClockType: null, issue: 'New customer. Clock has never run properly since purchase.', status: 'Active' },
+    { number: 184, lastName: 'Achterberg', firstName: 'Margaret', dateEntered: '2026-04-29', phoneNumber: '(231) 555-0142', dateCalled: null, clockType: 'Cuckoo 3 wt.', customClockType: null, issue: 'Bellows replaced last year; cuckoo now silent, weights stop after ~6 hours. Possible bushing wear in the strike train.', notes: '[]', status: 'Active' },
+    { number: 183, lastName: 'Bachmann', firstName: 'Henry', dateEntered: '2026-04-22', phoneNumber: '(616) 555-0107', dateCalled: '2026-05-08', clockType: 'Mantle Clock', customClockType: null, issue: 'Westminster chimes out of sequence; runs fast about 4 min per day. Customer called Friday — wants to drop off Tuesday.', notes: JSON.stringify([
+      { id: 1001, author: 'Ron', when: 'May 8, 9:14 AM', body: 'Called Henry — left voicemail. Mailbox said he\'s out till Tuesday.', tag: null },
+      { id: 1002, author: 'Ron', when: 'May 9, 11:02 AM', body: 'Henry called back. Drop-off Tuesday afternoon. Bringing the original pendulum and a spare key.', tag: null },
+      { id: 1003, author: 'Ron', when: 'May 10, 4:48 PM', body: 'Pulled service notes from 2019 — last cleaning was Hermle 451-050. Will need short bushings on the chime train. Ordered from Timesavers.', tag: 'Parts' },
+    ]), status: 'Active' },
+    { number: 182, lastName: 'Beaumont', firstName: 'Cecilia', dateEntered: '2026-03-14', phoneNumber: '(231) 555-0188', dateCalled: null, clockType: 'Wall Clock', customClockType: null, issue: 'Regulator pendulum will not maintain swing. Cleaned and oiled in 2023.', notes: '[]', status: 'Active' },
+    { number: 181, lastName: 'Calderón', firstName: 'Ramón', dateEntered: '2026-02-02', phoneNumber: '(269) 555-0153', dateCalled: '2026-04-30', clockType: 'Other', customClockType: 'Anniversary (400-day)', issue: 'Suspension spring snapped. Needs replacement; verify torsion arm alignment.', notes: '[]', status: 'Active' },
+    { number: 180, lastName: 'Delacroix', firstName: 'Yvonne', dateEntered: '2025-11-08', phoneNumber: '(517) 555-0119', dateCalled: null, clockType: 'Cuckoo 2 wt.', customClockType: null, issue: 'Quail call broken; cuckoo door stuck. Customer\'s grandfather brought it from Bavaria 1953 — handle with care.', notes: '[]', status: 'Active' },
+    { number: 179, lastName: 'Eberhardt', firstName: 'Walter', dateEntered: '2026-05-04', phoneNumber: '(231) 555-0173', dateCalled: null, clockType: 'Mantle Clock', customClockType: null, issue: 'New customer — Seth Thomas Adamantine, 1898. Strike train binding.', notes: '[]', status: 'Active' },
+    { number: 178, lastName: 'Friedland', firstName: 'Anneliese', dateEntered: '2026-04-12', phoneNumber: '(231) 555-0165', dateCalled: '2026-05-06', clockType: 'Wall Clock', customClockType: null, issue: 'Kieninger movement — chimes ring on the half hour but not the hour.', notes: '[]', status: 'Active' },
+    { number: 177, lastName: 'Hollister', firstName: 'Tom', dateEntered: '2026-04-30', phoneNumber: '(906) 555-0146', dateCalled: null, clockType: 'Cuckoo 3 wt.', customClockType: null, issue: 'Music box plays slowly — likely governor fly out of true.', notes: '[]', status: 'Active' },
+    { number: 176, lastName: 'Iverson', firstName: 'Karin', dateEntered: '2026-03-28', phoneNumber: '(248) 555-0192', dateCalled: '2026-05-10', clockType: 'Mantle Clock', customClockType: null, issue: 'Hands slip on canon pinion. Friction tightening needed.', notes: '[]', status: 'Active' },
+    { number: 175, lastName: 'Janowski', firstName: 'Peter', dateEntered: '2026-01-19', phoneNumber: '(231) 555-0181', dateCalled: '2026-04-21', clockType: 'Other', customClockType: "Ship's Bell", issue: "Ship's bell strike out of sync — wants by mid-June for retirement gift.", notes: '[]', status: 'Active' },
+    { number: 174, lastName: 'Kowalczyk', firstName: 'Maria', dateEntered: '2026-03-08', phoneNumber: '(269) 555-0144', dateCalled: '2026-05-09', clockType: 'Wall Clock', customClockType: null, issue: 'Howard Miller — case finish damage from sunlight; movement runs fine.', notes: '[]', status: 'Active' },
+    { number: 173, lastName: 'Lindqvist', firstName: 'Erik', dateEntered: '2026-04-18', phoneNumber: '(906) 555-0118', dateCalled: null, clockType: 'Cuckoo 2 wt.', customClockType: null, issue: 'Chains slipping off sprockets when raising weights.', notes: '[]', status: 'Active' },
+    { number: 172, lastName: 'Morimoto', firstName: 'Junko', dateEntered: '2026-04-09', phoneNumber: '(248) 555-0177', dateCalled: '2026-05-07', clockType: 'Mantle Clock', customClockType: null, issue: 'Ansonia crystal regulator — escape wheel pivot worn. Possible bushing.', notes: '[]', status: 'Active' },
+    { number: 171, lastName: 'Norquist', firstName: 'Astrid', dateEntered: '2026-02-26', phoneNumber: '(231) 555-0156', dateCalled: '2026-05-02', clockType: 'Wall Clock', customClockType: null, issue: 'Vienna regulator — second hand sweeps unevenly.', notes: '[]', status: 'Active' },
+    { number: 170, lastName: "O'Halloran", firstName: 'Frank', dateEntered: '2026-04-25', phoneNumber: '(616) 555-0133', dateCalled: null, clockType: 'Cuckoo 3 wt.', customClockType: null, issue: "Bird won't pop — sliding wire jammed against gable. Quick fix likely.", notes: '[]', status: 'Active' },
+    { number: 169, lastName: 'Pemberton', firstName: 'Diane', dateEntered: '2025-12-04', phoneNumber: '(231) 555-0114', dateCalled: '2026-04-22', clockType: 'Mantle Clock', customClockType: null, issue: 'Cleaned + oiled; new mainspring barrel.', notes: '[]', status: 'Complete' },
+    { number: 168, lastName: 'Renfro', firstName: 'Beth', dateEntered: '2025-10-30', phoneNumber: '(269) 555-0102', dateCalled: '2026-03-15', clockType: 'Cuckoo 2 wt.', customClockType: null, issue: 'Bellows replaced; deer + foliage scene refinished.', notes: '[]', status: 'Complete' },
   ]
 
   const insertMany = db.transaction((records: typeof seeds) => {

@@ -12,6 +12,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
       ipcRenderer.invoke('records:delete', id),
     getNextNumber: () =>
       ipcRenderer.invoke('records:getNextNumber'),
+    updateNotes: (id: number, notes: unknown) =>
+      ipcRenderer.invoke('records:updateNotes', id, notes),
   },
   settings: {
     get: () =>

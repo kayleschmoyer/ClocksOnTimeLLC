@@ -1,394 +1,311 @@
-import React, { useState, useRef, useCallback } from 'react'
-import { useReactToPrint } from 'react-to-print'
-import type { WaitingListRecord, UpdateRecordInput, NavContext } from '../../types'
-import { useNavigation } from '../../hooks/useNavigation'
-import { today, formatDate } from '../../utils/dateUtils'
-import { AgingFlag } from '../shared/AgingFlag'
-import { ConfirmDialog } from '../shared/ConfirmDialog'
-import { Button } from '../shared/Button'
-import { RecordForm } from './RecordForm'
-import { PrintRecord } from '../Print/PrintRecord'
+import React, { useState, useCallback } from 'react'
+import type { WaitingListRecord, Note } from '../../types'
+import { Ico } from '../shared/Ico'
+import { daysSince, formatLongDate, formatShortDate } from '../../utils/dateUtils'
+import { getAgingLevel } from '../../utils/agingFlag'
 
-interface RecordDetailProps {
-  record: WaitingListRecord
-  navList: WaitingListRecord[]     // list this record belongs to (for prev/next)
-  navContext: NavContext
-  onUpdate: (id: number, input: UpdateRecordInput) => Promise<WaitingListRecord>
-  onDelete: (id: number) => Promise<void>
-  onNavigate: (id: number) => void  // navigate to another record
-  onBack: () => void
+function clockLabel(r: WaitingListRecord): string {
+  return r.clockType === 'Other' ? (r.customClockType || 'Other') : r.clockType
 }
 
-export const RecordDetail: React.FC<RecordDetailProps> = ({
-  record,
-  navList,
-  navContext,
-  onUpdate,
-  onDelete,
-  onNavigate,
-  onBack,
-}) => {
-  const [editing, setEditing] = useState(false)
-  const [isDirty, setIsDirty] = useState(false)
-  const [pendingNav, setPendingNav] = useState<'prev' | 'next' | 'back' | null>(null)
-  const [showUnsavedDialog, setShowUnsavedDialog] = useState(false)
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
-  const [showCompleteDialog, setShowCompleteDialog] = useState(false)
-
-  const printRef = useRef<HTMLDivElement>(null)
-  const handlePrint = useReactToPrint({
-    content: () => printRef.current,
-    documentTitle: `Record-${record.number}-${record.lastName}`,
-  })
-
-  const nav = useNavigation(navList, record.id)
-
-  const clockDisplay = record.clockType === 'Other'
-    ? (record.customClockType ?? 'Other')
-    : record.clockType
-
-  // Try to navigate — if dirty, show warning first
-  const tryNavigate = useCallback((direction: 'prev' | 'next' | 'back') => {
-    if (editing && isDirty) {
-      setPendingNav(direction)
-      setShowUnsavedDialog(true)
-    } else {
-      doNavigate(direction)
-    }
-  }, [editing, isDirty, nav])
-
-  const doNavigate = (direction: 'prev' | 'next' | 'back') => {
-    setEditing(false)
-    setIsDirty(false)
-    if (direction === 'back') {
-      onBack()
-    } else if (direction === 'prev' && nav.prevId != null) {
-      onNavigate(nav.prevId)
-    } else if (direction === 'next' && nav.nextId != null) {
-      onNavigate(nav.nextId)
-    }
-  }
-
-  const handleMarkAsCalled = async () => {
-    await onUpdate(record.id, { dateCalled: today() })
-  }
-
-  const handleMarkComplete = async () => {
-    if (!record.dateCalled) {
-      setShowCompleteDialog(true)
-    } else {
-      await onUpdate(record.id, { status: 'Complete' })
-    }
-  }
-
-  const handleMarkActive = async () => {
-    await onUpdate(record.id, { status: 'Active' })
-  }
-
-  const handleDelete = async () => {
-    await onDelete(record.id)
-    onBack()
-  }
-
-  const handleFormSave = async (data: UpdateRecordInput) => {
-    await onUpdate(record.id, data)
-    setEditing(false)
-    setIsDirty(false)
-  }
-
-  const handleFormCancel = () => {
-    setEditing(false)
-    setIsDirty(false)
-  }
-
+function StatusBadge({ status }: { status: string }) {
   return (
-    <div style={styles.page}>
-      {/* Top bar */}
-      <div style={styles.topBar}>
-        <div style={styles.topLeft}>
-          <Button variant="secondary" size="sm" onClick={() => tryNavigate('back')}>
-            ← Back to List
-          </Button>
-          <span style={styles.navContext}>
-            {navContext === 'searchResults' ? 'Search Results' : 'Active List'}
-          </span>
-        </div>
-
-        <div style={styles.navBlock}>
-          <Button
-            variant="secondary"
-            size="sm"
-            disabled={!nav.hasPrev}
-            onClick={() => tryNavigate('prev')}
-          >
-            ← Prev
-          </Button>
-          <span style={styles.navPos}>
-            {nav.currentIndex + 1} / {nav.total}
-          </span>
-          <Button
-            variant="secondary"
-            size="sm"
-            disabled={!nav.hasNext}
-            onClick={() => tryNavigate('next')}
-          >
-            Next →
-          </Button>
-        </div>
-
-        <div style={styles.topRight}>
-          {!editing && (
-            <>
-              {record.status === 'Active' && (
-                <>
-                  {!record.dateCalled && (
-                    <Button variant="secondary" size="sm" onClick={handleMarkAsCalled}>
-                      Mark as Called
-                    </Button>
-                  )}
-                  <Button variant="secondary" size="sm" onClick={handleMarkComplete}>
-                    Mark Complete
-                  </Button>
-                </>
-              )}
-              {record.status === 'Complete' && (
-                <Button variant="secondary" size="sm" onClick={handleMarkActive}>
-                  Mark Active
-                </Button>
-              )}
-              <Button variant="secondary" size="sm" onClick={handlePrint}>
-                🖨 Print
-              </Button>
-              <Button variant="secondary" size="sm" onClick={() => setEditing(true)}>
-                Edit
-              </Button>
-              <Button variant="danger" size="sm" onClick={() => setShowDeleteDialog(true)}>
-                Delete
-              </Button>
-            </>
-          )}
-        </div>
-      </div>
-
-      {/* Record header */}
-      <div style={styles.header}>
-        <div style={styles.headerLeft}>
-          <span style={styles.recordNum}>Record #{record.number}</span>
-          <AgingFlag dateEntered={record.dateEntered} status={record.status} />
-          <span className={`badge ${record.status === 'Active' ? 'badge-active' : 'badge-complete'}`}>
-            {record.status}
-          </span>
-        </div>
-        <div style={styles.headerName}>
-          {record.lastName}, {record.firstName}
-        </div>
-      </div>
-
-      {editing ? (
-        <RecordForm
-          mode="edit"
-          record={record}
-          onSave={handleFormSave}
-          onCancel={handleFormCancel}
-          onDirtyChange={setIsDirty}
-        />
-      ) : (
-        <div style={styles.fields}>
-          <div style={styles.fieldGrid}>
-            <FieldRow label="Date Entered" value={formatDate(record.dateEntered)} />
-            <FieldRow label="Phone Number" value={record.phoneNumber || '—'} />
-            <FieldRow label="Date Called" value={formatDate(record.dateCalled)} />
-            <FieldRow label="Clock Type" value={clockDisplay} />
-          </div>
-          <div style={styles.issueBlock}>
-            <span style={styles.issueLabel}>Issue</span>
-            <p style={styles.issueText}>{record.issue || '—'}</p>
-          </div>
-        </div>
-      )}
-
-      {/* Hidden print target */}
-      <div style={{ display: 'none' }}>
-        <PrintRecord ref={printRef} record={record} />
-      </div>
-
-      {/* Unsaved changes dialog */}
-      <ConfirmDialog
-        isOpen={showUnsavedDialog}
-        title="Unsaved Changes"
-        message="You have unsaved changes. If you leave now, your changes will be lost."
-        confirmLabel="Leave Without Saving"
-        cancelLabel="Stay and Edit"
-        variant="danger"
-        onConfirm={() => {
-          setShowUnsavedDialog(false)
-          if (pendingNav) doNavigate(pendingNav)
-          setPendingNav(null)
-        }}
-        onCancel={() => {
-          setShowUnsavedDialog(false)
-          setPendingNav(null)
-        }}
-      />
-
-      {/* Delete confirmation */}
-      <ConfirmDialog
-        isOpen={showDeleteDialog}
-        title="Delete Record"
-        message={`Are you sure you want to delete Record #${record.number} — ${record.lastName}, ${record.firstName}? This cannot be undone.`}
-        confirmLabel="Delete"
-        cancelLabel="Cancel"
-        variant="danger"
-        onConfirm={() => {
-          setShowDeleteDialog(false)
-          handleDelete()
-        }}
-        onCancel={() => setShowDeleteDialog(false)}
-      />
-
-      {/* Mark complete without date called */}
-      <ConfirmDialog
-        isOpen={showCompleteDialog}
-        title="Mark as Complete"
-        message="This record has no Date Called. Do you still want to mark it Complete?"
-        confirmLabel="Yes, Mark Complete"
-        cancelLabel="Cancel"
-        onConfirm={async () => {
-          setShowCompleteDialog(false)
-          await onUpdate(record.id, { status: 'Complete' })
-        }}
-        onCancel={() => setShowCompleteDialog(false)}
-      />
-    </div>
+    <span className={'badge ' + (status === 'Active' ? 'active' : 'done')}>
+      <span className="pip" />{status}
+    </span>
   )
 }
 
-const FieldRow: React.FC<{ label: string; value: string }> = ({ label, value }) => (
-  <div style={fieldRowStyles.row}>
-    <span style={fieldRowStyles.label}>{label}</span>
-    <span style={fieldRowStyles.value}>{value}</span>
-  </div>
-)
-
-const fieldRowStyles: Record<string, React.CSSProperties> = {
-  row: {
-    display: 'flex',
-    flexDirection: 'column',
-    padding: '10px 16px',
-    borderBottom: '1px solid #f0f0f0',
-  },
-  label: {
-    fontSize: 11,
-    fontWeight: 600,
-    color: '#9297a0',
-    marginBottom: 3,
-    textTransform: 'uppercase',
-    letterSpacing: '0.04em',
-  },
-  value: {
-    fontSize: 14,
-    color: '#181d26',
-  },
+function AgingText({ iso, status }: { iso: string; status: string }) {
+  if (status === 'Complete') return <span>Completed</span>
+  const days = daysSince(iso)
+  const level = getAgingLevel(iso)
+  if (level === 'critical') return <span style={{ color: 'var(--flag-crit)', fontWeight: 600 }}>{days} days waiting</span>
+  if (level === 'warning')  return <span style={{ color: 'var(--flag-warn)', fontWeight: 600 }}>{days} days waiting</span>
+  return <span>{days} days ago</span>
 }
 
-const styles: Record<string, React.CSSProperties> = {
-  page: {
-    display: 'flex',
-    flexDirection: 'column',
-    height: '100%',
-    background: '#f8fafc',
-    overflow: 'hidden',
-  },
-  topBar: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: '10px 20px',
-    background: '#ffffff',
-    borderBottom: '1px solid #dddddd',
-    flexShrink: 0,
-    gap: 12,
-  },
-  topLeft: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 12,
-    flex: 1,
-  },
-  navContext: {
-    fontSize: 12,
-    color: '#9297a0',
-  },
-  navBlock: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 8,
-  },
-  navPos: {
-    fontSize: 13,
-    color: '#41454d',
-    minWidth: 50,
-    textAlign: 'center',
-  },
-  topRight: {
-    display: 'flex',
-    gap: 8,
-    flex: 1,
-    justifyContent: 'flex-end',
-    flexWrap: 'wrap',
-  },
-  header: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: '14px 20px',
-    background: '#ffffff',
-    borderBottom: '1px solid #dddddd',
-    flexShrink: 0,
-  },
-  headerLeft: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 10,
-  },
-  recordNum: {
-    fontSize: 16,
-    fontWeight: 600,
-    color: '#181d26',
-  },
-  headerName: {
-    fontSize: 20,
-    fontWeight: 500,
-    color: '#181d26',
-  },
-  fields: {
-    overflowY: 'auto',
-    flex: 1,
-  },
-  fieldGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
-    background: '#ffffff',
-    borderBottom: '1px solid #dddddd',
-  },
-  issueBlock: {
-    padding: '16px 20px',
-    background: '#ffffff',
-    marginTop: 8,
-  },
-  issueLabel: {
-    fontSize: 11,
-    fontWeight: 600,
-    color: '#9297a0',
-    textTransform: 'uppercase',
-    letterSpacing: '0.04em',
-    display: 'block',
-    marginBottom: 6,
-  },
-  issueText: {
-    fontSize: 14,
-    color: '#181d26',
-    lineHeight: 1.6,
-    whiteSpace: 'pre-wrap',
-  },
+interface DetailProps {
+  record: WaitingListRecord
+  records: WaitingListRecord[]
+  onClose: () => void
+  onNavigate: (id: number) => void
+  onEdit: (id: number) => void
+  onDelete: (id: number) => Promise<void>
+  onToggleCalled: (id: number) => Promise<void>
+  onToggleComplete: (id: number) => Promise<void>
+  onAddNote: (id: number, body: string) => Promise<void>
+  onDeleteNote: (id: number, noteId: number) => Promise<void>
+}
+
+export const Detail: React.FC<DetailProps> = ({
+  record, records, onClose, onNavigate,
+  onEdit, onDelete, onToggleCalled, onToggleComplete, onAddNote, onDeleteNote,
+}) => {
+  const [draft, setDraft] = useState('')
+  const notes: Note[] = JSON.parse(record.notes || '[]')
+  const idx = records.findIndex(r => r.id === record.id)
+
+  const handlePost = useCallback(async () => {
+    if (!draft.trim()) return
+    await onAddNote(record.id, draft.trim())
+    setDraft('')
+  }, [draft, record.id, onAddNote])
+
+  const handleExport = useCallback(() => {
+    const lines = [
+      'CLOCKS ON TIME — Record #' + String(record.number).padStart(3, '0'),
+      '='.repeat(40),
+      'Customer:    ' + record.lastName + ', ' + record.firstName,
+      'Phone:       ' + (record.phoneNumber || ''),
+      'Clock:       ' + clockLabel(record),
+      'Entered:     ' + formatLongDate(record.dateEntered),
+      'Called:      ' + (record.dateCalled ? formatLongDate(record.dateCalled) : '—'),
+      'Status:      ' + record.status,
+      '',
+      'Issue:',
+      record.issue,
+      '',
+      'Notes:',
+      ...notes.map(n => `  • [${n.when}] ${n.author}: ${n.body}`),
+    ].join('\n')
+    const blob = new Blob([lines], { type: 'text/plain' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `record-${String(record.number).padStart(3, '0')}.txt`
+    a.click()
+    setTimeout(() => URL.revokeObjectURL(url), 1000)
+  }, [record, notes])
+
+  return (
+    <div className="drawer" key={record.id}>
+      <div className="drawer-head">
+        <div className="drawer-headtop">
+          <div className="crumbs">
+            <button className="btn btn-ghost btn-sm" onClick={onClose} style={{ marginRight: 4 }}>
+              <Ico name="chev-l" size={14} />Back to list
+            </button>
+            <span>Waiting List</span>
+            <Ico name="chev-r" size={12} />
+            <strong>Record #{String(record.number).padStart(3, '0')}</strong>
+          </div>
+          <div className="drawer-nav">
+            <button
+              className="btn btn-ghost btn-icon btn-sm"
+              onClick={() => idx > 0 && onNavigate(records[idx - 1].id)}
+              disabled={idx <= 0}
+            >
+              <Ico name="chev-l" size={14} />
+            </button>
+            <span style={{ fontSize: 12, color: 'var(--ink-3)', fontFamily: 'var(--font-mono)' }}>
+              {idx >= 0 ? idx + 1 : '?'} / {records.length}
+            </span>
+            <button
+              className="btn btn-ghost btn-icon btn-sm"
+              onClick={() => idx < records.length - 1 && onNavigate(records[idx + 1].id)}
+              disabled={idx >= records.length - 1}
+            >
+              <Ico name="chev-r" size={14} />
+            </button>
+          </div>
+          <button className="btn btn-ghost btn-icon" onClick={onClose} title="Close">
+            <Ico name="close" size={14} />
+          </button>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 24 }}>
+          <div>
+            <div className="drawer-name">{record.lastName}, {record.firstName}</div>
+            <div className="drawer-meta">
+              <StatusBadge status={record.status} />
+              <span className="sep">·</span>
+              <span>Entered {formatLongDate(record.dateEntered)}</span>
+              <span className="sep">·</span>
+              <AgingText iso={record.dateEntered} status={record.status} />
+              <span className="sep">·</span>
+              <span className="ct-chip" style={{ height: 20, fontSize: 11 }}>
+                <Ico name="clock" size={11} />{clockLabel(record)}
+              </span>
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+            <button
+              className={'action-toggle' + (record.dateCalled ? ' on' : '')}
+              onClick={() => onToggleCalled(record.id)}
+            >
+              <span className="check">{record.dateCalled && <Ico name="check" size={10} />}</span>
+              {record.dateCalled
+                ? <>{`Called ${formatShortDate(record.dateCalled)}`}<span className="undo"> · click to undo</span></>
+                : 'Mark as called'}
+            </button>
+            <button
+              className={'action-toggle' + (record.status === 'Complete' ? ' on' : '')}
+              onClick={() => onToggleComplete(record.id)}
+            >
+              <span className="check">{record.status === 'Complete' && <Ico name="check" size={10} />}</span>
+              {record.status === 'Complete'
+                ? <>Complete<span className="undo"> · click to reopen</span></>
+                : 'Mark complete'}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="drawer-body">
+        <div className="drawer-inner">
+          <div className="two-col">
+            <div>
+              <div className="panel" style={{ marginTop: 0 }}>
+                <div className="panel-title">Issue</div>
+                <div className="panel-body">{record.issue}</div>
+              </div>
+
+              <div className="panel">
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div className="panel-title" style={{ marginBottom: 0 }}>Notes · {notes.length}</div>
+                  <div style={{ fontSize: 11.5, color: 'var(--ink-mute)' }}>Newest first</div>
+                </div>
+                <div style={{ marginTop: 10 }} className="note-composer">
+                  <textarea
+                    placeholder="Add a note — parts ordered, customer call back, repair progress…"
+                    value={draft}
+                    onChange={e => setDraft(e.target.value)}
+                    onKeyDown={e => { if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') handlePost() }}
+                  />
+                  <div className="note-composer-foot">
+                    <span className="hint">Tip: Ctrl+Enter to post</span>
+                    <div style={{ flex: 1 }} />
+                    <button
+                      className="btn btn-primary btn-sm"
+                      disabled={!draft.trim()}
+                      onClick={handlePost}
+                      style={!draft.trim() ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
+                    >
+                      <Ico name="plus" size={13} />Add note
+                    </button>
+                  </div>
+                </div>
+                <div className="notes" style={{ marginTop: 12 }}>
+                  {[...notes].reverse().map(n => (
+                    <div className="note" key={n.id}>
+                      <div className="note-head">
+                        <span className="author">{n.author}</span>
+                        <span>·</span>
+                        <span className="when">{n.when}</span>
+                        {n.tag && <span className="tag">{n.tag}</span>}
+                      </div>
+                      <div className="note-body">{n.body}</div>
+                      <button
+                        className="btn btn-ghost btn-icon btn-sm note-del"
+                        title="Delete note"
+                        onClick={() => onDeleteNote(record.id, n.id)}
+                      >
+                        <Ico name="trash" size={12} />
+                      </button>
+                    </div>
+                  ))}
+                  {notes.length === 0 && (
+                    <div style={{ padding: '14px 4px', fontSize: 13, color: 'var(--ink-mute)', fontStyle: 'italic' }}>
+                      No notes yet. Add the first one above.
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <div className="panel" style={{ marginTop: 0 }}>
+                <div className="panel-title">Details</div>
+                <div className="field-grid" style={{ gridTemplateColumns: '1fr' }}>
+                  <div className="field">
+                    <span className="lbl">Phone</span>
+                    <span className="val mono">{record.phoneNumber || '—'}</span>
+                  </div>
+                  <div className="field">
+                    <span className="lbl">Clock Type</span>
+                    <span className="val">
+                      <span className="ct-chip"><Ico name="clock" size={11} />{clockLabel(record)}</span>
+                    </span>
+                  </div>
+                  <div className="field">
+                    <span className="lbl">Date Entered</span>
+                    <span className="val">{formatLongDate(record.dateEntered)}</span>
+                  </div>
+                  <div className="field">
+                    <span className="lbl">Date Called</span>
+                    <span className={'val' + (record.dateCalled ? '' : ' empty')}>
+                      {record.dateCalled ? formatLongDate(record.dateCalled) : 'Not called yet'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="panel">
+                <div className="panel-title">Timeline</div>
+                <div className="timeline">
+                  <div className="tl-item done">
+                    <div className="tl-dot"><Ico name="check" size={11} /></div>
+                    <div>
+                      <div className="tl-row">
+                        <span className="tl-label">Added to waiting list</span>
+                        <span className="tl-date">{formatLongDate(record.dateEntered)}</span>
+                      </div>
+                      <div style={{ fontSize: 12, color: 'var(--ink-3)' }}>
+                        Entry #{String(record.number).padStart(3, '0')} created by Ron
+                      </div>
+                    </div>
+                  </div>
+                  <div className={'tl-item ' + (record.dateCalled ? 'done' : 'pending')}>
+                    <div className="tl-dot">{record.dateCalled && <Ico name="phone" size={10} />}</div>
+                    <div>
+                      <div className="tl-row">
+                        <span className="tl-label">
+                          {record.dateCalled ? 'Customer called' : 'Customer not yet called'}
+                        </span>
+                        {record.dateCalled && <span className="tl-date">{formatLongDate(record.dateCalled)}</span>}
+                      </div>
+                    </div>
+                  </div>
+                  <div className={'tl-item ' + (record.status === 'Complete' ? 'done' : 'pending')}>
+                    <div className="tl-dot">{record.status === 'Complete' && <Ico name="check" size={11} />}</div>
+                    <div>
+                      <div className="tl-row">
+                        <span className="tl-label">
+                          {record.status === 'Complete' ? 'Marked complete' : 'Awaiting completion'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="drawer-foot">
+        <button className="btn" onClick={() => window.print()}>
+          <Ico name="print" size={14} />Print record
+        </button>
+        <button className="btn" onClick={handleExport}>
+          <Ico name="export" size={14} />Export
+        </button>
+        <div className="spacer" />
+        <button
+          className="btn btn-danger"
+          onClick={() => {
+            if (confirm(`Delete record #${String(record.number).padStart(3, '0')}? This cannot be undone.`)) {
+              onDelete(record.id)
+            }
+          }}
+        >
+          <Ico name="trash" size={14} />Delete
+        </button>
+        <button className="btn btn-primary" onClick={() => onEdit(record.id)}>
+          <Ico name="edit" size={14} />Edit details
+        </button>
+      </div>
+    </div>
+  )
 }

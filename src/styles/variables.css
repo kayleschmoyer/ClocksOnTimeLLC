@@ -1,65 +1,48 @@
 :root {
-  /* Colors from Airtable design system */
-  --color-primary: #181d26;
-  --color-primary-active: #0d1218;
-  --color-ink: #181d26;
-  --color-body: #333840;
-  --color-muted: #41454d;
-  --color-hairline: #dddddd;
-  --color-border-strong: #9297a0;
-  --color-canvas: #ffffff;
-  --color-surface-soft: #f8fafc;
-  --color-surface-strong: #e0e2e6;
-  --color-on-primary: #ffffff;
-  --color-link: #1b61c9;
-  --color-info-border: #458fff;
-  --color-success: #006400;
-  --color-danger: #c0392b;
-  --color-danger-active: #922b21;
+  /* Accent — warm bronze */
+  --accent:        #8a5a1e;
+  --accent-strong: #6f4615;
+  --accent-soft:   #f6efe2;
+  --accent-soft-2: #efe4cd;
+  --accent-line:   #d9c39a;
 
-  /* Aging flag colors */
-  --color-flag-warning: #f59e0b;
-  --color-flag-critical: #ef4444;
-  --color-flag-warning-bg: #fef9c3;
-  --color-flag-critical-bg: #fee2e2;
+  /* Surfaces — Mica light */
+  --wash:             #f4f1ec;
+  --canvas:           #fbfaf7;
+  --card:             #ffffff;
+  --hairline:         #ebe6dc;
+  --hairline-strong:  #ddd6c8;
+  --row-hover:        #f7f2e7;
 
-  /* Status badge colors */
-  --color-status-active-bg: #dcfce7;
-  --color-status-active-text: #166534;
-  --color-status-complete-bg: #e0e2e6;
-  --color-status-complete-text: #41454d;
+  /* Text */
+  --ink:      #1a1814;
+  --ink-2:    #3d3a33;
+  --ink-3:    #6b665b;
+  --ink-mute: #98917f;
 
-  /* Spacing */
-  --spacing-xxs: 4px;
-  --spacing-xs: 8px;
-  --spacing-sm: 12px;
-  --spacing-md: 16px;
-  --spacing-lg: 24px;
-  --spacing-xl: 32px;
-  --spacing-xxl: 48px;
+  /* Status */
+  --ok-bg:      #e6f2e8;
+  --ok-fg:      #2c6b3c;
+  --done-bg:    #ecece8;
+  --done-fg:    #565047;
 
-  /* Border radius */
-  --rounded-xs: 2px;
-  --rounded-sm: 6px;
-  --rounded-md: 10px;
-  --rounded-lg: 12px;
+  --flag-warn:     #b87f1d;
+  --flag-warn-bg:  #fbf2dd;
+  --flag-crit:     #b13a26;
+  --flag-crit-bg:  #faece7;
 
-  /* Typography */
-  --font-sans: -apple-system, 'Segoe UI', system-ui, Roboto, sans-serif;
-  --font-size-xs: 11px;
-  --font-size-sm: 13px;
-  --font-size-base: 14px;
-  --font-size-md: 16px;
-  --font-size-lg: 18px;
-  --font-size-xl: 20px;
-  --font-size-2xl: 24px;
+  /* Radius */
+  --radius-sm: 4px;
+  --radius:    6px;
+  --radius-lg: 10px;
+  --radius-xl: 14px;
 
   /* Shadows */
-  --shadow-modal: 0 8px 32px rgba(24, 29, 38, 0.18);
-  --shadow-card: 0 2px 8px rgba(24, 29, 38, 0.08);
-  --shadow-dropdown: 0 4px 16px rgba(24, 29, 38, 0.12);
+  --shadow-1: 0 1px 0 rgba(26,24,20,0.04), 0 1px 2px rgba(26,24,20,0.04);
+  --shadow-2: 0 1px 2px rgba(26,24,20,0.06), 0 6px 16px rgba(26,24,20,0.06);
+  --shadow-3: 0 12px 32px rgba(26,24,20,0.14), 0 2px 8px rgba(26,24,20,0.08);
 
-  /* Transitions */
-  --transition-fast: 120ms ease;
-  --transition-base: 200ms ease;
+  /* Typography */
+  --font-sans: 'Segoe UI Variable Display', 'Segoe UI Variable', 'Segoe UI', Inter, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Cascadia Code', ui-monospace, monospace;
 }

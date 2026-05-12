@@ -1,88 +1,121 @@
-import React, { useState, useCallback, useEffect } from 'react'
-import type { WaitingListRecord, NewRecordInput, UpdateRecordInput, NavContext } from './types'
+import React, { useState, useCallback, useEffect, useRef } from 'react'
+import type { WaitingListRecord, Note, NewRecordInput, UpdateRecordInput } from './types'
 import { useRecords } from './hooks/useRecords'
-import { useSearch, defaultSearchParams } from './hooks/useSearch'
-import { useSort } from './hooks/useSort'
 import { today } from './utils/dateUtils'
+import { Ico } from './components/shared/Ico'
+import { Toast } from './components/shared/Toast'
+import { Sidebar } from './components/Sidebar'
 import { MainScreen } from './components/MainScreen/MainScreen'
-import { RecordDetail } from './components/RecordDetail/RecordDetail'
-import { RecordForm } from './components/RecordDetail/RecordForm'
-import { ConfirmDialog } from './components/shared/ConfirmDialog'
+import { Detail } from './components/RecordDetail/RecordDetail'
+import { RecordFormModal } from './components/RecordDetail/RecordForm'
 
-type AppView = 'list' | 'detail' | 'new'
+export type SidebarTab = 'waiting' | 'completed' | 'reports'
 
 export default function App() {
   const { records, loading, createRecord, updateRecord, deleteRecord } = useRecords()
-
-  const [view, setView] = useState<AppView>('list')
+  const [tab, setTab] = useState<SidebarTab>('waiting')
   const [selectedId, setSelectedId] = useState<number | null>(null)
-  const [navContext, setNavContext] = useState<NavContext>('activeList')
-  const [navList, setNavList] = useState<WaitingListRecord[]>([])
-  const [backupReminderOpen, setBackupReminderOpen] = useState(false)
+  const [showNew, setShowNew] = useState(false)
+  const [editingId, setEditingId] = useState<number | null>(null)
   const [nextNumber, setNextNumber] = useState<number | undefined>(undefined)
+  const [toast, setToast] = useState('')
+  const [backupReminderOpen, setBackupReminderOpen] = useState(false)
 
-  // Register backup reminder listener from main process
+  const ding = useCallback((msg: string) => setToast(msg), [])
+
   useEffect(() => {
-    const cleanup = window.electronAPI.onBackupReminder(() => {
-      setBackupReminderOpen(true)
-    })
+    const cleanup = window.electronAPI.onBackupReminder(() => setBackupReminderOpen(true))
     return cleanup
   }, [])
 
-  // Active records list (for use in nav context)
-  const activeRecords = useSearch(records, { ...defaultSearchParams, statusFilter: 'Active' })
-  const sortedActiveRecords = useSort(activeRecords, 'number')
+  const selected = selectedId != null ? records.find(r => r.id === selectedId) ?? null : null
 
-  const selectedRecord = selectedId != null
-    ? records.find(r => r.id === selectedId) ?? null
-    : null
+  const counts = {
+    waiting:   records.filter(r => !r.isDeleted && r.status === 'Active').length,
+    completed: records.filter(r => !r.isDeleted && r.status === 'Complete').length,
+    customers: new Set(records.filter(r => !r.isDeleted).map(r => r.lastName + r.phoneNumber)).size,
+  }
 
   const handleAddNew = useCallback(async () => {
     const num = await window.electronAPI.records.getNextNumber()
     setNextNumber(num)
-    setView('new')
+    setEditingId(null)
+    setShowNew(true)
   }, [])
 
-  const handleOpenRecord = useCallback((id: number, context: NavContext, list: WaitingListRecord[]) => {
-    setSelectedId(id)
-    setNavContext(context)
-    setNavList(list)
-    setView('detail')
+  const handleEdit = useCallback(async (id: number) => {
+    setEditingId(id)
+    setShowNew(true)
   }, [])
 
-  const handleNavigate = useCallback((id: number) => {
-    setSelectedId(id)
-  }, [])
+  const handleSave = useCallback(async (data: NewRecordInput | UpdateRecordInput) => {
+    if (editingId) {
+      await updateRecord(editingId, data as UpdateRecordInput)
+      ding('Record updated')
+    } else {
+      const created = await createRecord(data as NewRecordInput)
+      setSelectedId(created.id)
+      ding(`Record #${String(created.number).padStart(3,'0')} added`)
+    }
+    setShowNew(false)
+    setEditingId(null)
+  }, [editingId, createRecord, updateRecord, ding])
 
-  const handleBack = useCallback(() => {
-    setView('list')
+  const handleDelete = useCallback(async (id: number) => {
+    await deleteRecord(id)
     setSelectedId(null)
-  }, [])
+    ding('Record deleted')
+  }, [deleteRecord, ding])
 
-  const handleNewSave = useCallback(async (data: NewRecordInput) => {
-    const created = await createRecord(data)
-    setSelectedId(created.id)
-    setNavContext('activeList')
-    setView('detail')
-  }, [createRecord])
+  const handleToggleCalled = useCallback(async (id: number) => {
+    const rec = records.find(r => r.id === id)
+    if (!rec) return
+    await updateRecord(id, { dateCalled: rec.dateCalled ? null : today() })
+  }, [records, updateRecord])
+
+  const handleToggleComplete = useCallback(async (id: number) => {
+    const rec = records.find(r => r.id === id)
+    if (!rec) return
+    await updateRecord(id, { status: rec.status === 'Complete' ? 'Active' : 'Complete' })
+  }, [records, updateRecord])
+
+  const handleAddNote = useCallback(async (id: number, body: string) => {
+    const rec = records.find(r => r.id === id)
+    if (!rec) return
+    const existing: Note[] = JSON.parse(rec.notes || '[]')
+    const newNote: Note = {
+      id: Date.now(),
+      author: 'Ron',
+      when: new Date().toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }),
+      body,
+      tag: null,
+    }
+    await window.electronAPI.records.updateNotes(id, [...existing, newNote])
+    // Refresh by updating local state via updateRecord
+    await updateRecord(id, { notes: JSON.stringify([...existing, newNote]) })
+  }, [records, updateRecord])
+
+  const handleDeleteNote = useCallback(async (id: number, noteId: number) => {
+    const rec = records.find(r => r.id === id)
+    if (!rec) return
+    const existing: Note[] = JSON.parse(rec.notes || '[]')
+    const updated = existing.filter(n => n.id !== noteId)
+    await updateRecord(id, { notes: JSON.stringify(updated) })
+  }, [records, updateRecord])
 
   const handleBackup = useCallback(async () => {
     const result = await window.electronAPI.backup.now()
     if (result.success) {
-      alert(`Backup saved to:\n${result.path}`)
+      ding(`Backup saved · ${records.length} records`)
     } else if (result.error) {
-      alert(`Backup failed: ${result.error}`)
+      ding(`Backup failed: ${result.error}`)
     }
-  }, [])
+  }, [records.length, ding])
 
   const handleBackupReminderConfirm = useCallback(async () => {
     setBackupReminderOpen(false)
     const result = await window.electronAPI.backup.now()
-    if (result.success) {
-      window.electronAPI.readyToQuit()
-    } else {
-      // Backup failed or was cancelled — stay open
-    }
+    if (result.success) window.electronAPI.readyToQuit()
   }, [])
 
   const handleBackupReminderClose = useCallback(() => {
@@ -90,112 +123,78 @@ export default function App() {
     window.electronAPI.readyToQuit()
   }, [])
 
-  const handleBackupReminderCancel = useCallback(() => {
-    setBackupReminderOpen(false)
-    // Don't quit — user cancelled
-  }, [])
-
   if (loading) {
     return (
-      <div style={styles.loading}>
-        Loading...
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', fontSize: 14, color: 'var(--ink-3)' }}>
+        Loading…
       </div>
     )
   }
 
+  const editRecord = editingId ? records.find(r => r.id === editingId) : undefined
+
   return (
-    <div style={styles.app}>
-      {view === 'list' && (
+    <div className="shell">
+      <Sidebar tab={tab} setTab={setTab} counts={counts} />
+
+      <main className="main">
         <MainScreen
           records={records}
+          tab={tab}
+          selectedId={selectedId}
+          onSelectRecord={setSelectedId}
           onAddNew={handleAddNew}
-          onOpenRecord={handleOpenRecord}
           onBackup={handleBackup}
+        />
+
+        {selected && (
+          <Detail
+            record={selected}
+            records={records.filter(r => !r.isDeleted && r.status === (tab === 'completed' ? 'Complete' : 'Active'))}
+            onClose={() => setSelectedId(null)}
+            onNavigate={setSelectedId}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+            onToggleCalled={handleToggleCalled}
+            onToggleComplete={handleToggleComplete}
+            onAddNote={handleAddNote}
+            onDeleteNote={handleDeleteNote}
+          />
+        )}
+      </main>
+
+      {showNew && (
+        <RecordFormModal
+          editRecord={editRecord}
+          nextNumber={nextNumber}
+          onSave={handleSave}
+          onClose={() => { setShowNew(false); setEditingId(null) }}
         />
       )}
 
-      {view === 'new' && (
-        <div style={styles.newForm}>
-          <div style={styles.newFormHeader}>
-            <h2 style={styles.newFormTitle}>
-              Add New Record — #{nextNumber ?? '...'}
-            </h2>
-            <span style={{ fontSize: 13, color: '#9297a0' }}>
-              Today: {today()}
-            </span>
+      {/* Backup reminder */}
+      {backupReminderOpen && (
+        <div className="modal-mask open" onClick={() => setBackupReminderOpen(false)}>
+          <div className="modal modal-confirm" onClick={e => e.stopPropagation()}>
+            <div className="modal-head">
+              <div className="ico"><Ico name="backup" /></div>
+              <div>
+                <div className="modal-title">Database Backup Reminder</div>
+                <div className="modal-sub">It has been more than 7 days since your last backup.</div>
+              </div>
+            </div>
+            <div className="modal-foot">
+              <button className="btn" onClick={() => setBackupReminderOpen(false)}>Cancel</button>
+              <button className="btn" onClick={handleBackupReminderClose}>Close Without Backup</button>
+              <button className="btn btn-primary" onClick={handleBackupReminderConfirm}>
+                <Ico name="backup" size={14} />Backup Now
+              </button>
+            </div>
           </div>
-          <RecordForm
-            mode="new"
-            nextNumber={nextNumber}
-            onSave={handleNewSave as (data: NewRecordInput | UpdateRecordInput) => Promise<void>}
-            onCancel={handleBack}
-          />
         </div>
       )}
 
-      {view === 'detail' && selectedRecord && (
-        <RecordDetail
-          record={selectedRecord}
-          navList={navContext === 'searchResults' ? navList : sortedActiveRecords}
-          navContext={navContext}
-          onUpdate={updateRecord}
-          onDelete={deleteRecord}
-          onNavigate={handleNavigate}
-          onBack={handleBack}
-        />
-      )}
-
-      {/* Backup reminder dialog */}
-      <ConfirmDialog
-        isOpen={backupReminderOpen}
-        title="Database Backup Reminder"
-        message="It has been more than 7 days since your last backup. Would you like to back up your database before closing?"
-        confirmLabel="Backup Now"
-        cancelLabel="Cancel"
-        thirdLabel="Close Without Backup"
-        onConfirm={handleBackupReminderConfirm}
-        onCancel={handleBackupReminderCancel}
-        onThird={handleBackupReminderClose}
-      />
+      <Toast msg={toast} onClear={() => setToast('')} />
     </div>
   )
-}
-
-const styles: Record<string, React.CSSProperties> = {
-  app: {
-    height: '100%',
-    display: 'flex',
-    flexDirection: 'column',
-    overflow: 'hidden',
-  },
-  loading: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: '100%',
-    fontSize: 14,
-    color: '#9297a0',
-  },
-  newForm: {
-    display: 'flex',
-    flexDirection: 'column',
-    height: '100%',
-    background: '#f8fafc',
-    overflow: 'hidden',
-  },
-  newFormHeader: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: '12px 20px',
-    background: '#ffffff',
-    borderBottom: '1px solid #dddddd',
-    flexShrink: 0,
-  },
-  newFormTitle: {
-    fontSize: 16,
-    fontWeight: 600,
-    color: '#181d26',
-    margin: 0,
-  },
 }
