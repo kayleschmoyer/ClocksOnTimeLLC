@@ -1,0 +1,107 @@
+/* Shared button base */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: 7px var(--spacing-md);
+  font-size: var(--font-size-base);
+  font-weight: 500;
+  line-height: 1.4;
+  border-radius: var(--rounded-sm);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: background-color var(--transition-fast), border-color var(--transition-fast);
+  white-space: nowrap;
+  user-select: none;
+}
+
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background-color: var(--color-primary);
+  color: var(--color-on-primary);
+  border-color: var(--color-primary);
+}
+.btn-primary:not(:disabled):active {
+  background-color: var(--color-primary-active);
+}
+
+.btn-secondary {
+  background-color: var(--color-canvas);
+  color: var(--color-ink);
+  border-color: var(--color-hairline);
+}
+.btn-secondary:not(:disabled):active {
+  background-color: var(--color-surface-soft);
+}
+
+.btn-danger {
+  background-color: var(--color-canvas);
+  color: var(--color-danger);
+  border-color: var(--color-danger);
+}
+.btn-danger:not(:disabled):active {
+  background-color: #fff5f5;
+}
+
+.btn-sm {
+  padding: 4px var(--spacing-sm);
+  font-size: var(--font-size-sm);
+}
+
+/* Form fields */
+.field-label {
+  display: block;
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  color: var(--color-ink);
+  margin-bottom: var(--spacing-xxs);
+}
+
+.field-input {
+  display: block;
+  width: 100%;
+  padding: 7px var(--spacing-sm);
+  font-size: var(--font-size-base);
+  color: var(--color-ink);
+  background-color: var(--color-canvas);
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--rounded-sm);
+  outline: none;
+  transition: border-color var(--transition-fast);
+}
+
+.field-input:focus {
+  border-color: var(--color-info-border);
+  box-shadow: 0 0 0 3px rgba(69, 143, 255, 0.15);
+}
+
+.field-input:read-only {
+  background-color: var(--color-surface-soft);
+  color: var(--color-muted);
+  cursor: not-allowed;
+}
+
+/* Status badges */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  border-radius: var(--rounded-sm);
+}
+
+.badge-active {
+  background-color: var(--color-status-active-bg);
+  color: var(--color-status-active-text);
+}
+
+.badge-complete {
+  background-color: var(--color-status-complete-bg);
+  color: var(--color-status-complete-text);
+}
