@@ -1,3 +1,11 @@
+export interface Note {
+  id: number
+  author: string
+  when: string     // display string, e.g. "May 10, 4:48 PM"
+  body: string
+  tag: string | null
+}
+
 export interface WaitingListRecord {
   id: number
   number: number
@@ -9,6 +17,7 @@ export interface WaitingListRecord {
   clockType: string
   customClockType: string | null
   issue: string
+  notes: string              // JSON string of Note[]
   status: 'Active' | 'Complete'
   isDeleted: number          // 0 | 1
   createdAt: string
@@ -26,7 +35,7 @@ export type NewRecordInput = Omit<WaitingListRecord,
 
 export type UpdateRecordInput = Partial<Pick<WaitingListRecord,
   'lastName' | 'firstName' | 'dateEntered' | 'phoneNumber' |
-  'dateCalled' | 'clockType' | 'customClockType' | 'issue' | 'status'>>
+  'dateCalled' | 'clockType' | 'customClockType' | 'issue' | 'notes' | 'status'>>
 
 export type SortMode = 'number' | 'lastName' | 'dateEntered' | 'dateCalled'
 
@@ -39,6 +48,8 @@ export const CLOCK_TYPES = [
   'Cuckoo 3 wt.',
   'Wall Clock',
   'Mantle Clock',
+  'Anniversary (400-day)',
+  'Tall Case',
   'Other',
 ] as const
 
@@ -51,6 +62,7 @@ export interface ElectronAPI {
     update: (id: number, input: UpdateRecordInput) => Promise<WaitingListRecord>
     delete: (id: number) => Promise<void>
     getNextNumber: () => Promise<number>
+    updateNotes: (id: number, notes: Note[]) => Promise<WaitingListRecord>
   }
   settings: {
     get: () => Promise<AppSettings>

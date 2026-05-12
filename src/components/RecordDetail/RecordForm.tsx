@@ -1,17 +1,14 @@
 import React, { useState, useEffect } from 'react'
 import type { WaitingListRecord, NewRecordInput, UpdateRecordInput } from '../../types'
 import { CLOCK_TYPES } from '../../types'
-import { today } from '../../utils/dateUtils'
-import { PhoneInput } from '../shared/PhoneInput'
-import { Button } from '../shared/Button'
+import { today, formatLongDate } from '../../utils/dateUtils'
+import { Ico } from '../shared/Ico'
 
-interface RecordFormProps {
-  mode: 'new' | 'edit'
-  record?: WaitingListRecord        // provided in 'edit' mode
-  nextNumber?: number               // provided in 'new' mode
+interface RecordFormModalProps {
+  editRecord?: WaitingListRecord
+  nextNumber?: number
   onSave: (data: NewRecordInput | UpdateRecordInput) => Promise<void>
-  onCancel: () => void
-  onDirtyChange?: (isDirty: boolean) => void
+  onClose: () => void
 }
 
 interface FormState {
@@ -26,7 +23,7 @@ interface FormState {
   status: 'Active' | 'Complete'
 }
 
-function recordToForm(r: WaitingListRecord): FormState {
+function toFormState(r: WaitingListRecord): FormState {
   return {
     lastName: r.lastName,
     firstName: r.firstName,
@@ -40,7 +37,7 @@ function recordToForm(r: WaitingListRecord): FormState {
   }
 }
 
-function emptyForm(nextNumber?: number): FormState {
+function emptyFormState(): FormState {
   return {
     lastName: '',
     firstName: '',
@@ -54,247 +51,173 @@ function emptyForm(nextNumber?: number): FormState {
   }
 }
 
-export const RecordForm: React.FC<RecordFormProps> = ({
-  mode,
-  record,
-  nextNumber,
-  onSave,
-  onCancel,
-  onDirtyChange,
+export const RecordFormModal: React.FC<RecordFormModalProps> = ({
+  editRecord, nextNumber, onSave, onClose,
 }) => {
-  const [form, setForm] = useState<FormState>(
-    mode === 'edit' && record ? recordToForm(record) : emptyForm(nextNumber)
-  )
+  const isEdit = !!editRecord
+  const [form, setForm] = useState<FormState>(isEdit ? toFormState(editRecord!) : emptyFormState())
+  const [showErr, setShowErr] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({})
-
-  // Track dirty state
-  const initialForm = React.useRef<FormState>(
-    mode === 'edit' && record ? recordToForm(record) : emptyForm(nextNumber)
-  )
-  const isDirty = JSON.stringify(form) !== JSON.stringify(initialForm.current)
 
   useEffect(() => {
-    onDirtyChange?.(isDirty)
-  }, [isDirty, onDirtyChange])
+    setForm(isEdit ? toFormState(editRecord!) : emptyFormState())
+    setShowErr(false)
+  }, [editRecord?.id])
 
-  // Reset if record changes (navigating prev/next while in edit mode — won't happen, but safety)
-  useEffect(() => {
-    if (mode === 'edit' && record) {
-      const f = recordToForm(record)
-      setForm(f)
-      initialForm.current = f
-    }
-  }, [record?.id])
-
-  const update = (field: keyof FormState, value: string) => {
+  const set = (field: keyof FormState, value: string) =>
     setForm(prev => ({ ...prev, [field]: value }))
-    if (errors[field]) {
-      setErrors(prev => ({ ...prev, [field]: undefined }))
-    }
-  }
 
-  const validate = (): boolean => {
-    const newErrors: typeof errors = {}
-    if (!form.lastName.trim()) newErrors.lastName = 'Last name is required'
-    if (!form.firstName.trim()) newErrors.firstName = 'First name is required'
-    if (!form.dateEntered) newErrors.dateEntered = 'Date entered is required'
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
-  }
+  const canSave = form.lastName.trim() && form.firstName.trim() && form.dateEntered
 
-  const handleSave = async () => {
-    if (!validate()) return
+  const handleSubmit = async () => {
+    if (!canSave) { setShowErr(true); return }
     setSaving(true)
     try {
-      const data: NewRecordInput | UpdateRecordInput = {
+      await onSave({
         lastName: form.lastName.trim(),
         firstName: form.firstName.trim(),
-        dateEntered: form.dateEntered,
-        phoneNumber: form.phoneNumber,
-        dateCalled: form.dateCalled || null,
+        phoneNumber: form.phoneNumber.trim(),
         clockType: form.clockType,
-        customClockType: form.clockType === 'Other' ? (form.customClockType || null) : null,
-        issue: form.issue.trim(),
+        ...(form.clockType === 'Other' ? { customClockType: form.customClockType.trim() } : { customClockType: null }),
+        dateEntered: form.dateEntered,
+        dateCalled: form.dateCalled || null,
         status: form.status,
-      }
-      await onSave(data)
+        issue: form.issue.trim() || 'No additional notes provided.',
+      })
     } finally {
       setSaving(false)
     }
   }
 
+  const displayNumber = isEdit
+    ? String(editRecord!.number).padStart(3, '0')
+    : String(nextNumber ?? '???').padStart(3, '0')
+
   return (
-    <div style={styles.form}>
-      <div style={styles.grid}>
-        {/* Last Name */}
-        <div style={styles.field}>
-          <label className="field-label" htmlFor="f-lastName">
-            Last Name <span style={styles.required}>*</span>
-          </label>
-          <input
-            id="f-lastName"
-            className="field-input"
-            value={form.lastName}
-            onChange={e => update('lastName', e.target.value)}
-          />
-          {errors.lastName && <span style={styles.error}>{errors.lastName}</span>}
-        </div>
-
-        {/* First Name */}
-        <div style={styles.field}>
-          <label className="field-label" htmlFor="f-firstName">
-            First Name <span style={styles.required}>*</span>
-          </label>
-          <input
-            id="f-firstName"
-            className="field-input"
-            value={form.firstName}
-            onChange={e => update('firstName', e.target.value)}
-          />
-          {errors.firstName && <span style={styles.error}>{errors.firstName}</span>}
-        </div>
-
-        {/* Date Entered */}
-        <div style={styles.field}>
-          <label className="field-label" htmlFor="f-dateEntered">
-            Date Entered <span style={styles.required}>*</span>
-          </label>
-          <input
-            id="f-dateEntered"
-            className="field-input"
-            type="date"
-            value={form.dateEntered}
-            onChange={e => update('dateEntered', e.target.value)}
-          />
-          {errors.dateEntered && <span style={styles.error}>{errors.dateEntered}</span>}
-        </div>
-
-        {/* Phone */}
-        <div style={styles.field}>
-          <label className="field-label" htmlFor="f-phone">Phone Number</label>
-          <PhoneInput
-            id="f-phone"
-            value={form.phoneNumber}
-            onChange={v => update('phoneNumber', v)}
-          />
-        </div>
-
-        {/* Date Called */}
-        <div style={styles.field}>
-          <label className="field-label" htmlFor="f-dateCalled">Date Called</label>
-          <input
-            id="f-dateCalled"
-            className="field-input"
-            type="date"
-            value={form.dateCalled}
-            onChange={e => update('dateCalled', e.target.value)}
-          />
-        </div>
-
-        {/* Clock Type */}
-        <div style={styles.field}>
-          <label className="field-label" htmlFor="f-clockType">Clock Type</label>
-          <select
-            id="f-clockType"
-            className="field-input"
-            value={form.clockType}
-            onChange={e => update('clockType', e.target.value)}
-          >
-            {CLOCK_TYPES.map(ct => (
-              <option key={ct} value={ct}>{ct}</option>
-            ))}
-          </select>
-        </div>
-
-        {/* Custom clock type (shown when Other is selected) */}
-        {form.clockType === 'Other' && (
-          <div style={styles.field}>
-            <label className="field-label" htmlFor="f-customClock">Custom Clock Type</label>
-            <input
-              id="f-customClock"
-              className="field-input"
-              placeholder="e.g. Ship Clock, Anniversary Clock"
-              value={form.customClockType}
-              onChange={e => update('customClockType', e.target.value)}
-            />
+    <div className="modal-mask open" onClick={onClose}>
+      <div className="modal" onClick={e => e.stopPropagation()}>
+        <div className="modal-head">
+          <div className="ico"><Ico name={isEdit ? 'edit' : 'plus'} /></div>
+          <div>
+            <div className="modal-title">{isEdit ? 'Edit record' : 'New waiting list entry'}</div>
+            <div className="modal-sub">Record #{displayNumber} · {formatLongDate(today())}</div>
           </div>
-        )}
-
-        {/* Status */}
-        <div style={styles.field}>
-          <label className="field-label" htmlFor="f-status">Status</label>
-          <select
-            id="f-status"
-            className="field-input"
-            value={form.status}
-            onChange={e => update('status', e.target.value as 'Active' | 'Complete')}
-          >
-            <option value="Active">Active</option>
-            <option value="Complete">Complete</option>
-          </select>
+          <div style={{ flex: 1 }} />
+          <button className="btn btn-ghost btn-icon" onClick={onClose}><Ico name="close" /></button>
         </div>
-      </div>
 
-      {/* Issue — full width */}
-      <div style={{ ...styles.field, marginTop: 12 }}>
-        <label className="field-label" htmlFor="f-issue">Issue</label>
-        <textarea
-          id="f-issue"
-          className="field-input"
-          rows={3}
-          style={{ resize: 'vertical', minHeight: 70 }}
-          value={form.issue}
-          onChange={e => update('issue', e.target.value)}
-          placeholder="Brief description of the clock issue..."
-        />
-      </div>
+        <div className="modal-body">
+          <div className="form-row">
+            <div className="form-field">
+              <label>Last name <span className="req">*</span></label>
+              <input
+                className={'input' + (showErr && !form.lastName.trim() ? ' err' : '')}
+                placeholder="e.g. Ahlström"
+                value={form.lastName}
+                onChange={e => set('lastName', e.target.value)}
+                autoFocus
+              />
+            </div>
+            <div className="form-field">
+              <label>First name <span className="req">*</span></label>
+              <input
+                className={'input' + (showErr && !form.firstName.trim() ? ' err' : '')}
+                placeholder="e.g. Greta"
+                value={form.firstName}
+                onChange={e => set('firstName', e.target.value)}
+              />
+            </div>
+            <div className="form-field">
+              <label>Phone number</label>
+              <input
+                className="input"
+                placeholder="(231) 555-0000"
+                value={form.phoneNumber}
+                onChange={e => set('phoneNumber', e.target.value)}
+              />
+            </div>
+            <div className="form-field">
+              <label>Clock type</label>
+              <select
+                className="select"
+                value={form.clockType}
+                onChange={e => set('clockType', e.target.value)}
+              >
+                {[...CLOCK_TYPES].map(t => <option key={t}>{t}</option>)}
+              </select>
+            </div>
+            {form.clockType === 'Other' && (
+              <div className="form-field" style={{ gridColumn: '1 / -1' }}>
+                <label>Custom clock type</label>
+                <input
+                  className="input"
+                  placeholder="e.g. Anniversary, Ship's Bell, Tall Case"
+                  value={form.customClockType}
+                  onChange={e => set('customClockType', e.target.value)}
+                />
+              </div>
+            )}
+            <div className="form-field">
+              <label>Date entered <span className="req">*</span></label>
+              <input
+                className="input"
+                type="date"
+                value={form.dateEntered}
+                onChange={e => set('dateEntered', e.target.value)}
+              />
+            </div>
+            <div className="form-field">
+              <label>Date called</label>
+              <input
+                className="input"
+                type="date"
+                value={form.dateCalled}
+                onChange={e => set('dateCalled', e.target.value)}
+              />
+            </div>
+            <div className="form-field" style={{ gridColumn: '1 / -1' }}>
+              <label>Status</label>
+              <div className="seg">
+                <button
+                  className={form.status === 'Active' ? 'on' : ''}
+                  onClick={() => set('status', 'Active')}
+                  type="button"
+                >Active</button>
+                <button
+                  className={form.status === 'Complete' ? 'on' : ''}
+                  onClick={() => set('status', 'Complete')}
+                  type="button"
+                >Complete</button>
+              </div>
+            </div>
+            <div className="form-field" style={{ gridColumn: '1 / -1' }}>
+              <label>Issue / notes</label>
+              <textarea
+                className="textarea"
+                placeholder="Brief description of the clock and the issue — visible chime mechanism damage, customer notes, urgency, etc."
+                rows={4}
+                value={form.issue}
+                onChange={e => set('issue', e.target.value)}
+              />
+            </div>
+          </div>
+          {showErr && !canSave && (
+            <div className="form-err">Please fill in the required fields marked with *.</div>
+          )}
+        </div>
 
-      {/* Form actions */}
-      <div style={styles.actions}>
-        <Button variant="secondary" onClick={onCancel} disabled={saving}>
-          Cancel
-        </Button>
-        <Button
-          variant="primary"
-          onClick={handleSave}
-          disabled={saving}
-        >
-          {saving ? 'Saving...' : (mode === 'new' ? 'Save New Record' : 'Save Changes')}
-        </Button>
+        <div className="modal-foot">
+          <button className="btn" onClick={onClose}>Cancel</button>
+          <button
+            className="btn btn-primary"
+            onClick={handleSubmit}
+            disabled={saving}
+          >
+            <Ico name="check" size={14} />
+            {saving ? 'Saving…' : isEdit ? 'Save changes' : 'Save record'}
+          </button>
+        </div>
       </div>
     </div>
   )
-}
-
-const styles: Record<string, React.CSSProperties> = {
-  form: {
-    padding: '16px 20px',
-  },
-  grid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
-    gap: '12px 16px',
-  },
-  field: {
-    display: 'flex',
-    flexDirection: 'column',
-  },
-  required: {
-    color: '#c0392b',
-    marginLeft: 2,
-  },
-  error: {
-    fontSize: 11,
-    color: '#c0392b',
-    marginTop: 3,
-  },
-  actions: {
-    display: 'flex',
-    gap: 8,
-    justifyContent: 'flex-end',
-    marginTop: 20,
-    paddingTop: 16,
-    borderTop: '1px solid #dddddd',
-  },
 }

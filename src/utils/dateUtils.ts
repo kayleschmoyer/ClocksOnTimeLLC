@@ -24,6 +24,20 @@ export function daysSince(iso: string): number {
   return Math.max(0, Math.floor((todayMs - entered) / 86400000))
 }
 
+/** Formats a YYYY-MM-DD string as "May 12, 2026" */
+export function formatLongDate(iso: string | null | undefined): string {
+  if (!iso) return '—'
+  const d = new Date(iso + 'T00:00')
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+}
+
+/** Formats a YYYY-MM-DD string as "May 12" */
+export function formatShortDate(iso: string | null | undefined): string {
+  if (!iso) return '—'
+  const d = new Date(iso + 'T00:00')
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+}
+
 /** Converts a display date MM/DD/YYYY to ISO YYYY-MM-DD */
 export function parseDisplayDate(display: string): string | null {
   const parts = display.split('/')

@@ -11,6 +11,7 @@ export interface RecordRow {
   clockType: string
   customClockType: string | null
   issue: string
+  notes: string  // JSON string of Note[]
   status: 'Active' | 'Complete'
   isDeleted: number
   createdAt: string
@@ -38,6 +39,7 @@ export interface UpdateRecordInput {
   clockType?: string
   customClockType?: string | null
   issue?: string
+  notes?: string
   status?: 'Active' | 'Complete'
 }
 
@@ -70,10 +72,10 @@ export function createRecord(input: NewRecordInput): RecordRow {
     db.prepare(`
       INSERT INTO records
         (number, lastName, firstName, dateEntered, phoneNumber, dateCalled,
-         clockType, customClockType, issue, status, isDeleted, createdAt, updatedAt)
+         clockType, customClockType, issue, notes, status, isDeleted, createdAt, updatedAt)
       VALUES
         (@number, @lastName, @firstName, @dateEntered, @phoneNumber, @dateCalled,
-         @clockType, @customClockType, @issue, @status, 0, @now, @now)
+         @clockType, @customClockType, @issue, @notes, @status, 0, @now, @now)
     `).run({
       number: n,
       lastName: input.lastName,
@@ -84,6 +86,7 @@ export function createRecord(input: NewRecordInput): RecordRow {
       clockType: input.clockType,
       customClockType: input.customClockType ?? null,
       issue: input.issue,
+      notes: '[]',
       status: input.status,
       now,
     })
