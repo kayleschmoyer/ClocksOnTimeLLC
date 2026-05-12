@@ -1,0 +1,65 @@
+:root {
+  /* Colors from Airtable design system */
+  --color-primary: #181d26;
+  --color-primary-active: #0d1218;
+  --color-ink: #181d26;
+  --color-body: #333840;
+  --color-muted: #41454d;
+  --color-hairline: #dddddd;
+  --color-border-strong: #9297a0;
+  --color-canvas: #ffffff;
+  --color-surface-soft: #f8fafc;
+  --color-surface-strong: #e0e2e6;
+  --color-on-primary: #ffffff;
+  --color-link: #1b61c9;
+  --color-info-border: #458fff;
+  --color-success: #006400;
+  --color-danger: #c0392b;
+  --color-danger-active: #922b21;
+
+  /* Aging flag colors */
+  --color-flag-warning: #f59e0b;
+  --color-flag-critical: #ef4444;
+  --color-flag-warning-bg: #fef9c3;
+  --color-flag-critical-bg: #fee2e2;
+
+  /* Status badge colors */
+  --color-status-active-bg: #dcfce7;
+  --color-status-active-text: #166534;
+  --color-status-complete-bg: #e0e2e6;
+  --color-status-complete-text: #41454d;
+
+  /* Spacing */
+  --spacing-xxs: 4px;
+  --spacing-xs: 8px;
+  --spacing-sm: 12px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+  --spacing-xxl: 48px;
+
+  /* Border radius */
+  --rounded-xs: 2px;
+  --rounded-sm: 6px;
+  --rounded-md: 10px;
+  --rounded-lg: 12px;
+
+  /* Typography */
+  --font-sans: -apple-system, 'Segoe UI', system-ui, Roboto, sans-serif;
+  --font-size-xs: 11px;
+  --font-size-sm: 13px;
+  --font-size-base: 14px;
+  --font-size-md: 16px;
+  --font-size-lg: 18px;
+  --font-size-xl: 20px;
+  --font-size-2xl: 24px;
+
+  /* Shadows */
+  --shadow-modal: 0 8px 32px rgba(24, 29, 38, 0.18);
+  --shadow-card: 0 2px 8px rgba(24, 29, 38, 0.08);
+  --shadow-dropdown: 0 4px 16px rgba(24, 29, 38, 0.12);
+
+  /* Transitions */
+  --transition-fast: 120ms ease;
+  --transition-base: 200ms ease;
+}
