@@ -9,3 +9,4 @@ release/
 npm-debug.log*
 .env
 
+*.tsbuildinfo

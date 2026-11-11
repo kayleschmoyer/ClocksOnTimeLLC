@@ -1,48 +1,58 @@
-/** Returns today's date in local timezone as YYYY-MM-DD */
+/** Today's date in the local timezone as YYYY-MM-DD */
 export function today(): string {
-  const d = new Date()
+  return toIso(new Date())
+}
+
+function toIso(d: Date): string {
   const y = d.getFullYear()
   const m = String(d.getMonth() + 1).padStart(2, '0')
   const day = String(d.getDate()).padStart(2, '0')
   return `${y}-${m}-${day}`
 }
 
-/** Formats a YYYY-MM-DD string as MM/DD/YYYY for display */
+function parseIso(iso: string): Date {
+  const [y, m, d] = iso.split('-').map(Number)
+  return new Date(y, m - 1, d)
+}
+
+/** Whole days from a YYYY-MM-DD date until today (local time, never negative) */
+export function daysSince(iso: string, now: Date = new Date()): number {
+  const start = parseIso(iso).getTime()
+  const end = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
+  return Math.max(0, Math.round((end - start) / 86400000))
+}
+
+/** "04/22/2026" */
 export function formatDate(iso: string | null | undefined): string {
-  if (!iso) return '—'
+  if (!iso) return ''
   const parts = iso.split('-')
   if (parts.length !== 3) return iso
-  const [y, m, d] = parts
-  return `${m}/${d}/${y}`
+  return `${parts[1]}/${parts[2]}/${parts[0]}`
 }
 
-/** Returns number of days since a YYYY-MM-DD date (using local timezone) */
-export function daysSince(iso: string): number {
-  const [y, m, d] = iso.split('-').map(Number)
-  const entered = new Date(y, m - 1, d).getTime()
-  const todayMs = new Date().setHours(0, 0, 0, 0)
-  return Math.max(0, Math.floor((todayMs - entered) / 86400000))
-}
-
-/** Formats a YYYY-MM-DD string as "May 12, 2026" */
+/** "April 22, 2026" */
 export function formatLongDate(iso: string | null | undefined): string {
-  if (!iso) return '—'
-  const d = new Date(iso + 'T00:00')
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  if (!iso) return ''
+  return parseIso(iso).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
 }
 
-/** Formats a YYYY-MM-DD string as "May 12" */
-export function formatShortDate(iso: string | null | undefined): string {
-  if (!iso) return '—'
-  const d = new Date(iso + 'T00:00')
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+/** Note times: ISO timestamps become "May 10, 2026 at 4:48 PM"; older free-text values pass through. */
+export function formatNoteTime(when: string): string {
+  if (!/^\d{4}-\d{2}-\d{2}T/.test(when)) return when
+  const d = new Date(when)
+  if (isNaN(d.getTime())) return when
+  const date = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  const time = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+  return `${date} at ${time}`
 }
 
-/** Converts a display date MM/DD/YYYY to ISO YYYY-MM-DD */
-export function parseDisplayDate(display: string): string | null {
-  const parts = display.split('/')
-  if (parts.length !== 3) return null
-  const [m, d, y] = parts
-  if (!m || !d || !y) return null
-  return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`
+/** "today", "yesterday", "5 days ago" for a full ISO timestamp */
+export function formatAgo(isoTimestamp: string | null, now: Date = new Date()): string {
+  if (!isoTimestamp) return 'never'
+  const d = new Date(isoTimestamp)
+  if (isNaN(d.getTime())) return 'never'
+  const days = daysSince(toIso(d), now)
+  if (days === 0) return 'today'
+  if (days === 1) return 'yesterday'
+  return `${days} days ago`
 }

@@ -65,9 +65,9 @@ function initSchema(db: Database.Database): void {
     db.exec(`ALTER TABLE records ADD COLUMN notes TEXT NOT NULL DEFAULT '[]'`)
   }
 
-  // Seed on first run
+  // Sample customers are for development only. An installed copy starts empty.
   const count = (db.prepare('SELECT COUNT(*) AS n FROM records').get() as { n: number }).n
-  if (count === 0) {
+  if (count === 0 && !app.isPackaged) {
     seedDatabase(db)
   }
 }
@@ -92,7 +92,7 @@ function seedDatabase(db: Database.Database): void {
       { id: 1003, author: 'Ron', when: 'May 10, 4:48 PM', body: 'Pulled service notes from 2019 — last cleaning was Hermle 451-050. Will need short bushings on the chime train. Ordered from Timesavers.', tag: 'Parts' },
     ]), status: 'Active' },
     { number: 182, lastName: 'Beaumont', firstName: 'Cecilia', dateEntered: '2026-03-14', phoneNumber: '(231) 555-0188', dateCalled: null, clockType: 'Wall Clock', customClockType: null, issue: 'Regulator pendulum will not maintain swing. Cleaned and oiled in 2023.', notes: '[]', status: 'Active' },
-    { number: 181, lastName: 'Calderón', firstName: 'Ramón', dateEntered: '2026-02-02', phoneNumber: '(269) 555-0153', dateCalled: '2026-04-30', clockType: 'Other', customClockType: 'Anniversary (400-day)', issue: 'Suspension spring snapped. Needs replacement; verify torsion arm alignment.', notes: '[]', status: 'Active' },
+    { number: 181, lastName: 'Calderón', firstName: 'Ramón', dateEntered: '2026-02-02', phoneNumber: '(269) 555-0153', dateCalled: '2026-04-30', clockType: 'Other', customClockType: 'Anniversary clock', issue: 'Suspension spring snapped. Needs replacement; verify torsion arm alignment.', notes: '[]', status: 'Active' },
     { number: 180, lastName: 'Delacroix', firstName: 'Yvonne', dateEntered: '2025-11-08', phoneNumber: '(517) 555-0119', dateCalled: null, clockType: 'Cuckoo 2 wt.', customClockType: null, issue: 'Quail call broken; cuckoo door stuck. Customer\'s grandfather brought it from Bavaria 1953 — handle with care.', notes: '[]', status: 'Active' },
     { number: 179, lastName: 'Eberhardt', firstName: 'Walter', dateEntered: '2026-05-04', phoneNumber: '(231) 555-0173', dateCalled: null, clockType: 'Mantle Clock', customClockType: null, issue: 'New customer — Seth Thomas Adamantine, 1898. Strike train binding.', notes: '[]', status: 'Active' },
     { number: 178, lastName: 'Friedland', firstName: 'Anneliese', dateEntered: '2026-04-12', phoneNumber: '(231) 555-0165', dateCalled: '2026-05-06', clockType: 'Wall Clock', customClockType: null, issue: 'Kieninger movement — chimes ring on the half hour but not the hour.', notes: '[]', status: 'Active' },

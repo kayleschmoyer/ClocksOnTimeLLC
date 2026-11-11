@@ -43,6 +43,11 @@ export interface UpdateRecordInput {
   status?: 'Active' | 'Complete'
 }
 
+const UPDATABLE: (keyof UpdateRecordInput)[] = [
+  'lastName', 'firstName', 'dateEntered', 'phoneNumber', 'dateCalled',
+  'clockType', 'customClockType', 'issue', 'notes', 'status',
+]
+
 function localNow(): string {
   return new Date().toISOString()
 }
@@ -101,7 +106,8 @@ export function updateRecord(id: number, input: UpdateRecordInput): RecordRow {
   const db = getDb()
   const now = localNow()
 
-  const fields = Object.keys(input) as (keyof UpdateRecordInput)[]
+  // Only known columns may be written; anything else sent by the window is ignored.
+  const fields = (Object.keys(input) as (keyof UpdateRecordInput)[]).filter(f => UPDATABLE.includes(f))
   if (fields.length === 0) {
     return db.prepare('SELECT * FROM records WHERE id = ?').get(id) as RecordRow
   }
@@ -119,4 +125,10 @@ export function updateRecord(id: number, input: UpdateRecordInput): RecordRow {
 export function softDeleteRecord(id: number): void {
   const db = getDb()
   db.prepare('UPDATE records SET isDeleted = 1, updatedAt = ? WHERE id = ?').run(localNow(), id)
+}
+
+export function restoreRecord(id: number): RecordRow {
+  const db = getDb()
+  db.prepare('UPDATE records SET isDeleted = 0, updatedAt = ? WHERE id = ?').run(localNow(), id)
+  return db.prepare('SELECT * FROM records WHERE id = ?').get(id) as RecordRow
 }
