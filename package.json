@@ -8,15 +8,14 @@
     "build": "electron-vite build",
     "preview": "electron-vite preview",
     "dist": "npm run build && electron-builder",
-    "dist:win": "npm run build && electron-builder --win"
+    "dist:win": "npm run build && electron-builder --win",
+    "typecheck": "tsc -p tsconfig.web.json --noEmit --composite false && tsc -p tsconfig.node.json --noEmit --composite false",
+    "test": "vitest run"
   },
   "dependencies": {
     "better-sqlite3": "^9.4.3",
-    "jspdf": "^2.5.1",
-    "jspdf-autotable": "^3.8.2",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "react-to-print": "^2.15.1"
+    "react-dom": "^18.2.0"
   },
   "devDependencies": {
     "@electron/rebuild": "^3.4.0",
@@ -29,31 +28,7 @@
     "electron-builder": "^24.9.1",
     "electron-vite": "^2.0.0",
     "typescript": "^5.3.3",
-    "vite": "^5.0.12"
-  },
-  "build": {
-    "appId": "com.clocksontime.waitinglist",
-    "productName": "Clocks on Time Waiting List",
-    "directories": {
-      "output": "dist"
-    },
-    "files": [
-      "out/**/*",
-      "resources/**/*"
-    ],
-    "win": {
-      "target": "nsis",
-      "icon": "resources/icon.ico"
-    },
-    "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true
-    },
-    "extraResources": [
-      {
-        "from": "resources",
-        "to": "resources"
-      }
-    ]
+    "vite": "^5.0.12",
+    "vitest": "^1.6.1"
   }
 }

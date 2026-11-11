@@ -1,48 +1,46 @@
+/* Design tokens. Sizes are generous on purpose: the people using this are in their 60s and 70s. */
 :root {
   /* Accent — warm bronze */
-  --accent:        #8a5a1e;
-  --accent-strong: #6f4615;
+  --accent:        #84541a;
+  --accent-strong: #6a4212;
   --accent-soft:   #f6efe2;
-  --accent-soft-2: #efe4cd;
   --accent-line:   #d9c39a;
 
-  /* Surfaces — Mica light */
-  --wash:             #f4f1ec;
-  --canvas:           #fbfaf7;
-  --card:             #ffffff;
-  --hairline:         #ebe6dc;
-  --hairline-strong:  #ddd6c8;
-  --row-hover:        #f7f2e7;
+  /* Surfaces */
+  --canvas:   #f7f5f0;
+  --card:     #ffffff;
+  --bar:      #26211c;
+  --bar-2:    #3a332c;
+  --line:     #ddd6c8;
+  --line-strong: #8f8778;   /* input borders: 3:1 against white */
+  --row-hover:   #f8f1e3;
 
-  /* Text */
-  --ink:      #1a1814;
-  --ink-2:    #3d3a33;
-  --ink-3:    #6b665b;
-  --ink-mute: #98917f;
+  /* Text — all pass 4.5:1 on white and on the canvas */
+  --ink:   #1a1814;
+  --ink-2: #3a362f;
+  --ink-3: #5c574d;
 
   /* Status */
-  --ok-bg:      #e6f2e8;
-  --ok-fg:      #2c6b3c;
-  --done-bg:    #ecece8;
-  --done-fg:    #565047;
+  --ok-bg: #e2f1e5;   --ok-fg: #1d5a31;
+  --done-bg: #e9e7e1; --done-fg: #45413a;
+  --yellow-bg: #ffe28a; --yellow-fg: #4a3600; --yellow-line: #c79a00;
+  --red-bg: #c22d18;    --red-fg: #ffffff;
+  --danger: #a52714;    --danger-soft: #fbece7;
 
-  --flag-warn:     #b87f1d;
-  --flag-warn-bg:  #fbf2dd;
-  --flag-crit:     #b13a26;
-  --flag-crit-bg:  #faece7;
+  --radius: 8px;
+  --radius-lg: 12px;
+  --shadow-1: 0 1px 2px rgba(26,24,20,0.06), 0 1px 1px rgba(26,24,20,0.04);
+  --shadow-3: 0 16px 40px rgba(26,24,20,0.22), 0 2px 8px rgba(26,24,20,0.10);
 
-  /* Radius */
-  --radius-sm: 4px;
-  --radius:    6px;
-  --radius-lg: 10px;
-  --radius-xl: 14px;
+  --font: 'Segoe UI Variable Text', 'Segoe UI', Inter, system-ui, sans-serif;
 
-  /* Shadows */
-  --shadow-1: 0 1px 0 rgba(26,24,20,0.04), 0 1px 2px rgba(26,24,20,0.04);
-  --shadow-2: 0 1px 2px rgba(26,24,20,0.06), 0 6px 16px rgba(26,24,20,0.06);
-  --shadow-3: 0 12px 32px rgba(26,24,20,0.14), 0 2px 8px rgba(26,24,20,0.08);
+  /* Type scale */
+  --t-sm: 14px;
+  --t-base: 16px;
+  --t-lg: 18px;
+  --t-h2: 20px;
+  --t-h1: 28px;
 
-  /* Typography */
-  --font-sans: 'Segoe UI Variable Display', 'Segoe UI Variable', 'Segoe UI', Inter, system-ui, sans-serif;
-  --font-mono: 'JetBrains Mono', 'Cascadia Code', ui-monospace, monospace;
+  /* Every control is at least this tall */
+  --control: 46px;
 }

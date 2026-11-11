@@ -1,16 +1,8 @@
-/** Formats a raw string of digits into (555) 555-5555 format */
-export function formatPhone(raw: string): string {
-  const digits = raw.replace(/\D/g, '')
-  if (digits.length === 10) {
-    return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`
-  }
-  if (digits.length === 11 && digits[0] === '1') {
-    return `(${digits.slice(1, 4)}) ${digits.slice(4, 7)}-${digits.slice(7)}`
-  }
-  return raw
-}
-
-/** Strips all non-digit characters */
-export function stripPhone(formatted: string): string {
-  return formatted.replace(/\D/g, '')
+/** Formats what has been typed so far as (231) 555-0142. Extra digits are dropped. */
+export function formatPhone(input: string): string {
+  const digits = input.replace(/\D/g, '').slice(0, 10)
+  if (digits.length === 0) return ''
+  if (digits.length <= 3) return `(${digits}`
+  if (digits.length <= 6) return `(${digits.slice(0, 3)}) ${digits.slice(3)}`
+  return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`
 }

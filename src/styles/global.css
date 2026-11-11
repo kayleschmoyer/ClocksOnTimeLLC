@@ -1,55 +1,39 @@
 @import './variables.css';
 
-*, *::before, *::after {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-html, body {
-  height: 100%;
-  overflow: hidden;
-}
-
+html, body, #root { height: 100%; }
 body {
-  font-family: var(--font-sans);
-  font-size: 13.5px;
+  font-family: var(--font);
+  font-size: var(--t-base);
+  line-height: 1.45;
   color: var(--ink-2);
   background: var(--canvas);
   -webkit-font-smoothing: antialiased;
-  letter-spacing: -0.005em;
+  overflow: hidden;
 }
 
-#root {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-}
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+button:disabled { cursor: not-allowed; }
+svg { display: block; flex-shrink: 0; }
 
-button {
-  font-family: var(--font-sans);
-  cursor: pointer;
-}
+/* One clear focus ring everywhere */
+:focus-visible { outline: 3px solid #1f6feb; outline-offset: 2px; border-radius: 4px; }
 
-input, select, textarea {
-  font-family: var(--font-sans);
-}
-
-svg {
-  display: block;
-}
-
-/* Scrollbar */
-::-webkit-scrollbar { width: 10px; height: 10px; }
-::-webkit-scrollbar-thumb { background: #d9d2c1; border-radius: 99px; }
+::-webkit-scrollbar { width: 14px; height: 14px; }
+::-webkit-scrollbar-thumb { background: #b9b1a0; border-radius: 99px; border: 3px solid var(--canvas); }
 ::-webkit-scrollbar-track { background: transparent; }
 
-/* Print */
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+
+/* The print sheet is the only thing that reaches paper or PDF */
+.print-sheet { display: none; }
 @media print {
-  body {
-    background: white;
-    color: black;
-    overflow: visible;
-  }
+  @page { size: Letter; margin: 0.5in; }
+  html, body, #root { height: auto; overflow: visible; background: #fff; }
   .no-print { display: none !important; }
+  .print-sheet { display: block; }
 }
